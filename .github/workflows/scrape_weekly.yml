@@ -1,0 +1,32 @@
+name: Weekly Retail Planning Scraper
+
+on:
+  schedule:
+    # Every Sunday at 02:00 UTC
+    - cron: "0 2 * * 0"
+
+  # Also lets you trigger it manually from the GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360   # 6 hours max — plenty for 70 councils
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements_scraper.txt
+
+      - name: Run scraper
+        env:
+          GCP_SERVICE_ACCOUNT_JSON: ${{ secrets.GCP_SERVICE_ACCOUNT_JSON }}
+        run: python maplanning_v15.py
