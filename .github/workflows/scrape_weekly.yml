@@ -65,4 +65,4 @@ jobs:
           GMAIL_FROM:               ${{ secrets.GMAIL_FROM }}
           GMAIL_APP_PASSWORD:       ${{ secrets.GMAIL_APP_PASSWORD }}
           GMAIL_TO:                 ${{ secrets.GMAIL_TO }}
-        run: python send_email.py
+        run: python email_digest.py
