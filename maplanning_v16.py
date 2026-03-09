@@ -1009,20 +1009,26 @@ def parse_results(soup):
 # ════════════════════════════════════════════════════════════
 _REFUSAL_WORDS  = ("refus",)
 _APPROVAL_WORDS = (
-    "approv", "grant", "permit", "lawful", "certif",
-    "prior approval", "no objection", "withdrawn",
-    "invalid", "discharge", "not required", "consent",
-    "conditions",
+    "approv", "grant", "permit", "permitted",
+    "lawful", "certif",
+    "prior approval", "no prior approval",
+    "no objection", "withdrawn", "invalid",
+    "discharge", "not required", "consent",
+    # NOTE: "conditions" intentionally excluded — "reasons for refusal...conditions"
+    # would false-match. "Approve with conditions" is caught by "approv" already.
 )
 # Decision values that Idox portals return — used in pass 3 scan
 _KNOWN_DECISIONS = [
+    # Refusals
     "refused", "refuse", "refusal",
+    # Approvals — all variants must be here so pass 3 catches them
     "approve with conditions", "approved with conditions",
     "approved subject to conditions",
     "granted", "approved", "grant",
+    "permit", "permitted", "permitted development",
     "prior approval required", "prior approval not required",
-    "withdrawn", "invalid", "lawful development certificate",
     "no prior approval required",
+    "withdrawn", "invalid", "lawful development certificate",
 ]
 
 def _parse_decision_from_soup(soup):
