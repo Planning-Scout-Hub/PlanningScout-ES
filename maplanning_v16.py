@@ -23,128 +23,150 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 SHEET_ID        = "172bpv-b2_nK5ENE1XPk5rWeokvnr1sjHvLBfVzHWh6c"
 WEEKS_TO_SCRAPE = 12
 
-# ── Verified Idox portals only ────────────────────────────
-# Each URL is tested at startup — dead ones are skipped automatically.
-# All use the standard Idox /search.do?action=advanced endpoint.
+# ════════════════════════════════════════════════════════════
+# COUNCILS — split by network reachability
+# ════════════════════════════════════════════════════════════
 #
-# ── v18 URL audit notes ──────────────────────────────────
-# Many councils migrated Idox subdomains. All URLs below are verified
-# against live search results (March 2026).
-# Non-Idox portals (Northgate, Ocella, Fastweb, Angular SPAs) removed —
-# they use different form structures and cannot be scraped by this tool.
-# Councils that time-out from GitHub US IPs are kept in the dict —
-# they work fine when run from Colab (UK IP routing).
-COUNCILS = {
-    # ══ West Yorkshire ══════════════════════════════════
+# GitHub Actions runs from US-based IPs. Some UK councils block non-UK
+# traffic at the firewall level (TCP reset — no code change fixes it).
+# These are separated into COUNCILS_COLAB_ONLY so it's obvious which
+# councils require a Colab run for full coverage.
+#
+# COUNCILS = COUNCILS_GITHUB + COUNCILS_COLAB_ONLY (merged below).
+# Preflight will naturally skip blocked ones regardless of which dict
+# they're in — the split is for documentation clarity only.
+#
+# All portals use the standard Idox /search.do?action=advanced endpoint.
+# Non-Idox portals (Northgate, Ocella, Fastweb, Angular SPAs) are excluded.
+
+# ── Confirmed working from GitHub Actions (US IP) ───────────────────────────
+COUNCILS_GITHUB = {
+    # West Yorkshire
     "Leeds":             "https://publicaccess.leeds.gov.uk/online-applications",
     "Wakefield":         "https://planning.wakefield.gov.uk/online-applications",
     "Bradford":          "https://planning.bradford.gov.uk/online-applications",
-    "Calderdale":        "https://portal.calderdale.gov.uk/online-applications",       # v17 DNS fix
-    "Kirklees":          "https://www.kirklees.gov.uk/beta/planning-and-building-control/online-applications",
-
-    # ══ Greater Manchester ══════════════════════════════
+    "Calderdale":        "https://portal.calderdale.gov.uk/online-applications",
     "Wigan":             "https://planning.wigan.gov.uk/online-applications",
-    # Manchester/Salford/Tameside/Trafford/Oldham/Bolton/Warrington —
-    # blocked from GitHub US IPs; run from Colab.
 
-    # ══ East Midlands ═══════════════════════════════════
+    # East Midlands
     "Lincoln":           "https://planning.lincoln.gov.uk/online-applications",
     "Nottingham":        "https://publicaccess.nottinghamcity.gov.uk/online-applications",
-    "Derby":             "https://eplanning.derby.gov.uk/online-applications",          # ConnErr from GH; OK via Colab
-    "Northampton":       "https://www.northampton.gov.uk/online-applications",
 
-    # ══ West Midlands ═══════════════════════════════════
-    "Wolverhampton":     "https://planningonline.wolverhampton.gov.uk/online-applications",  # ConnErr GH→Colab
+    # West Midlands
     "Solihull":          "https://publicaccess.solihull.gov.uk/online-applications",
     "Birmingham":        "https://eplanning.birmingham.gov.uk/online-applications",
 
-    # ══ South West ══════════════════════════════════════
+    # South West
     "Bristol":           "https://planningonline.bristol.gov.uk/online-applications",
     "Plymouth":          "https://planning.plymouth.gov.uk/online-applications",
     "Exeter":            "https://publicaccess.exeter.gov.uk/online-applications",
     "Cornwall":          "https://planning.cornwall.gov.uk/online-applications",
     "Cheltenham":        "https://publicaccess.cheltenham.gov.uk/online-applications",
-    "Gloucester":        "https://publicaccess.gloucester.gov.uk/online-applications",  # ConnErr GH→Colab
-    "Swindon":           "https://pa.swindon.gov.uk/online-applications",               # 403 GH→Colab
-    "Torbay":            "https://www.torbay.gov.uk/online-applications",
-    "Bath":              "https://www.bathnes.gov.uk/online-applications",
 
-    # ══ South East ══════════════════════════════════════
+    # South East
     "Portsmouth":        "https://publicaccess.portsmouth.gov.uk/online-applications",
     "Southampton":       "https://planningpublicaccess.southampton.gov.uk/online-applications",
-    "Reading":           "https://planning.reading.gov.uk/online-applications",         # 502 transient; Colab backup
-    "Oxford":            "https://public.oxford.gov.uk/online-applications",            # ConnErr GH→Colab
-    "Canterbury":        "https://pa.canterbury.gov.uk/online-applications",            # v17 DNS fix
+    "Canterbury":        "https://pa.canterbury.gov.uk/online-applications",
     "Maidstone":         "https://pa.maidstone.gov.uk/online-applications",
-    "Thanet":            "https://planning.thanet.gov.uk/online-applications",          # ConnErr GH→Colab
-    "Guildford":         "https://publicaccess.guildford.gov.uk/online-applications",   # v17 DNS fix
+    "Guildford":         "https://publicaccess.guildford.gov.uk/online-applications",
     "Eastbourne":        "https://planning.eastbourne.gov.uk/online-applications",
     "Worthing":          "https://planning.worthing.gov.uk/online-applications",
     "Brighton":          "https://planningapps.brighton-hove.gov.uk/online-applications",
-    "Hastings":          "https://www.hastings.gov.uk/online-applications",
     "Chichester":        "https://publicaccess.chichester.gov.uk/online-applications",
-    "Arun":              "https://www.arun.gov.uk/online-applications",
     "Reigate":           "https://idox.reigate-banstead.gov.uk/online-applications",
 
-    # ══ East of England ═════════════════════════════════
+    # East of England
     "Norfolk (N)":       "https://idoxpa.north-norfolk.gov.uk/online-applications",
-    "Norwich":           "https://planning.norwich.gov.uk/online-applications",         # 403 GH→Colab
     "Cambridge":         "https://applications.greatercambridgeplanning.org/online-applications",
     "Chelmsford":        "https://publicaccess.chelmsford.gov.uk/online-applications",
     "Luton":             "https://planning.luton.gov.uk/online-applications",
-    "Braintree":         "https://publicaccess.braintree.gov.uk/online-applications",
     "Basildon":          "https://planning.basildon.gov.uk/online-applications",
-    "Tendring":          "https://idox.tendringdc.gov.uk/online-applications",          # confirmed live
-    "Ipswich":           "https://publicaccess.ipswich.gov.uk/online-applications",     # may be down; Colab backup
+    "Tendring":          "https://idox.tendringdc.gov.uk/online-applications",
+    "Braintree":         "https://publicaccess.braintree.gov.uk/online-applications",
 
-    # ══ London (Idox portals only) ═══════════════════════
-    # Portals using Northgate, Ocella, SwiftLG, Angular SPA have been removed.
-    # Non-Idox removed: Hackney, Waltham Forest, Harrow, Havering, Hillingdon,
-    #                   Hounslow, Merton, Redbridge, Wandsworth, Haringey,
-    #                   Camden, Richmond.
+    # London — confirmed accessible from GitHub US IPs
     "Ealing":            "https://pam.ealing.gov.uk/online-applications",
     "Lewisham":          "https://planning.lewisham.gov.uk/online-applications",
     "Lambeth":           "https://planning.lambeth.gov.uk/online-applications",
-    "Croydon":           "https://publicaccess3.croydon.gov.uk/online-applications",   # v17 URL fix
+    "Croydon":           "https://publicaccess3.croydon.gov.uk/online-applications",
     "Brent":             "https://pa.brent.gov.uk/online-applications",
     "Tower Hamlets":     "https://development.towerhamlets.gov.uk/online-applications",
     "Greenwich":         "https://planning.royalgreenwich.gov.uk/online-applications",
-    "Newham":            "https://pa.newham.gov.uk/online-applications",               # ConnErr GH→Colab
-    "Bexley":            "https://pa.bexley.gov.uk/online-applications",               # ConnErr GH→Colab
-    "Kingston":          "https://publicaccess.kingston.gov.uk/online-applications",   # ConnErr GH→Colab
-    "Sutton":            "https://planningregister.sutton.gov.uk/online-applications",  # ConnErr GH→Colab
-    "Westminster":       "https://idoxpa.westminster.gov.uk/online-applications",      # ConnErr GH→Colab
-    "Southwark":         "https://planning.southwark.gov.uk/online-applications",      # ConnErr GH→Colab
-    "Barnet":            "https://publicaccess.barnet.gov.uk/online-applications",     # ConnErr GH→Colab
-    "Enfield":           "https://planningandbuildingcontrol.enfield.gov.uk/online-applications",  # ConnErr GH→Colab
-    "Bromley":           "https://searchapplications.bromley.gov.uk/online-applications",  # v17 URL fix
-    "Hammersmith":       "https://public-access.lbhf.gov.uk/online-applications",      # new v18
-    "City of London":    "https://www.planning2.cityoflondon.gov.uk/online-applications",  # new v18
+    "City of London":    "https://www.planning2.cityoflondon.gov.uk/online-applications",
 
-    # ══ North East ══════════════════════════════════════
-    "Sunderland":        "https://online-applications.sunderland.gov.uk/online-applications",  # v17 URL fix
+    # North East
     "Durham":            "https://publicaccess.durham.gov.uk/online-applications",
-    "North Tyneside":    "https://idoxpublicaccess.northtyneside.gov.uk/online-applications",  # v19 URL fix
-    # Newcastle/Gateshead — migrated away from Idox publicaccess subdomain;
-    # current portal URL unconfirmed; remove until verified.
+    "North Tyneside":    "https://idoxpublicaccess.northtyneside.gov.uk/online-applications",
 
-    # ══ South Yorkshire ═════════════════════════════════
-    "Sheffield":         "https://planningapps.sheffield.gov.uk/online-applications",  # ConnErr GH→Colab
-    # Rotherham: uses Fastweb (planning.rotherham.gov.uk) — not Idox, removed.
-    # Doncaster: uses custom ASP.NET portal — not Idox, removed.
-
-    # ══ North West ══════════════════════════════════════
-    "Knowsley":          "https://publicaccess.knowsley.gov.uk/online-applications",   # ConnErr GH→Colab
-    "Wirral":            "https://planning.wirral.gov.uk/online-applications",         # ConnErr GH→Colab
-    # Preston: uses selfservice.preston.gov.uk ASP.NET portal — NOT Idox, removed v19
-    # Cheshire East: uses planning.cheshireeast.gov.uk/AdvancedSearch.aspx — NOT Idox, removed v19
-    "Lancaster":         "https://planning.lancaster.gov.uk/online-applications",      # ConnErr GH→Colab
-    "Blackpool":         "https://idoxpa.blackpool.gov.uk/online-applications",        # confirmed live v18
-
-    # ══ Blocked from GitHub US IPs — run manually from Colab ═══════════
-    # Manchester, Salford, Tameside, Trafford, Oldham, Bolton, Warrington
-    # (confirmed Idox, UK-IP only — see Colab notebook)
+    # North West
+    "Blackpool":         "https://idoxpa.blackpool.gov.uk/online-applications",
 }
+
+# ── Blocked from GitHub US IPs — work fine from Colab (UK IP) ───────────────
+# These are confirmed Idox portals. Their firewalls drop non-UK connections.
+# Run the scraper from Colab at least monthly to cover these.
+COUNCILS_COLAB_ONLY = {
+    # ⭐ Greater Manchester — ALL blocked from US IPs
+    # TAMESIDE is where Mark found both confirmed qualified leads.
+    "Tameside":          "https://publicaccess.tameside.gov.uk/online-applications",
+    "Manchester":        "https://pa.manchester.gov.uk/online-applications",
+    "Salford":           "https://publicaccess.salford.gov.uk/online-applications",
+    "Trafford":          "https://pa.trafford.gov.uk/online-applications",
+    "Bolton":            "https://www.planningpa.bolton.gov.uk/online-applications-17",
+    "Oldham":            "https://online.oldham.gov.uk/online-applications",
+    "Bury":              "https://planning.bury.gov.uk/online-applications",
+    "Rochdale":          "https://planning.rochdale.gov.uk/online-applications",
+
+    # East Midlands
+    "Derby":             "https://eplanning.derby.gov.uk/online-applications",
+
+    # West Midlands
+    "Wolverhampton":     "https://planningonline.wolverhampton.gov.uk/online-applications",
+
+    # South West
+    "Gloucester":        "https://publicaccess.gloucester.gov.uk/online-applications",
+    "Swindon":           "https://pa.swindon.gov.uk/online-applications",
+    "Torbay":            "https://www.torbay.gov.uk/online-applications",
+    "Bath":              "https://www.bathnes.gov.uk/online-applications",
+
+    # South East
+    "Reading":           "https://planning.reading.gov.uk/online-applications",
+    "Oxford":            "https://public.oxford.gov.uk/online-applications",
+    "Thanet":            "https://planning.thanet.gov.uk/online-applications",
+    "Hastings":          "https://www.hastings.gov.uk/online-applications",
+    "Arun":              "https://www.arun.gov.uk/online-applications",
+
+    # East of England
+    "Norwich":           "https://planning.norwich.gov.uk/online-applications",
+    "Ipswich":           "https://ppc.ipswich.gov.uk/online-applications",
+
+    # London — blocked from US IPs
+    "Newham":            "https://pa.newham.gov.uk/online-applications",
+    "Bexley":            "https://pa.bexley.gov.uk/online-applications",
+    "Kingston":          "https://publicaccess.kingston.gov.uk/online-applications",
+    "Sutton":            "https://planningregister.sutton.gov.uk/online-applications",
+    "Westminster":       "https://idoxpa.westminster.gov.uk/online-applications",
+    "Southwark":         "https://planning.southwark.gov.uk/online-applications",
+    "Barnet":            "https://publicaccess.barnet.gov.uk/online-applications",
+    "Enfield":           "https://planningandbuildingcontrol.enfield.gov.uk/online-applications",
+    "Bromley":           "https://searchapplications.bromley.gov.uk/online-applications",
+    "Hammersmith":       "https://public-access.lbhf.gov.uk/online-applications",
+
+    # North East
+    "Sunderland":        "https://online-applications.sunderland.gov.uk/online-applications",
+
+    # South Yorkshire
+    "Sheffield":         "https://planningapps.sheffield.gov.uk/online-applications",
+
+    # North West
+    "Knowsley":          "https://publicaccess.knowsley.gov.uk/online-applications",
+    "Wirral":            "https://planning.wirral.gov.uk/online-applications",
+    "Lancaster":         "https://planning.lancaster.gov.uk/online-applications",
+}
+
+# Combined — preflight naturally skips the blocked ones on GitHub
+COUNCILS = {**COUNCILS_GITHUB, **COUNCILS_COLAB_ONLY}
+
 
 # ── Search keywords — what goes into the portal's description field ──────────
 # Goal: catch any Class E change-of-use refused for out-of-centre location.
@@ -236,7 +258,12 @@ PDF_TRIGGERS = [
 
     # ── 2. SEQUENTIAL TEST FAILURE ───────────────────────────────────────
     # Applicant failed to prove no sequentially preferable town centre
-    # sites exist. Always a core planning appeal ground.
+    # sites exist. Always the core planning appeal ground.
+    # NOTE: "sequential" standalone IS included — Mark's confirmed lead
+    # 25/00622/FUL was found via this exact word in the decision notice.
+    # In planning refusals, "sequential" ONLY refers to the NPPF sequential
+    # approach — it is never ambiguous or generic in this context.
+    "sequential",
     "sequential test",
     "sequential approach",
     "sequential assessment",
@@ -386,10 +413,8 @@ def preflight_check(councils):
         name, base_url = name_url
         test_url = f"{base_url}/search.do?action=advanced&searchType=Application"
         headers_variants = [
-            # Primary attempt — full browser Accept
-            None,
-            # Fallback — wildcard Accept (fixes some 406 rejections)
-            {"Accept": "text/html,*/*;q=0.9", "Accept-Language": "en-GB,en;q=0.5"},
+            None,  # Primary attempt — full browser Accept
+            {"Accept": "text/html,*/*;q=0.9", "Accept-Language": "en-GB,en;q=0.5"},  # 406 fallback
         ]
         for extra_headers in headers_variants:
             try:
@@ -399,14 +424,28 @@ def preflight_check(councils):
                 r = sess.get(test_url, timeout=15, allow_redirects=True, verify=False)
                 if r.status_code == 200:
                     soup = BeautifulSoup(r.text, "html.parser")
-                    has_form = bool(soup.find("form"))
-                    # A disclaimer gate (no search form yet) still means the
-                    # portal is live — mark OK and let the scraper handle it.
-                    has_planning_content = any(
-                        kw in r.text.lower()
-                        for kw in ("planning", "application", "search", "disclaimer")
+                    text_lower = r.text.lower()
+                    # Does it have a real Idox search form?
+                    has_search_form = bool(
+                        soup.find("input", {"name": re.compile(r"description|caseDecision|keyWord", re.I)})
+                        or soup.find("form", {"id": re.compile(r"search|criteria", re.I)})
+                        or soup.find("select", {"name": re.compile(r"caseDecision|decision|status", re.I)})
                     )
-                    if has_form or has_planning_content:
+                    # Is it a disclaimer/cookie gate? (redirected before reaching search form)
+                    is_disclaimer = any(kw in text_lower for kw in (
+                        "disclaimer", "terms and conditions", "accept", "cookies",
+                        "i accept", "agree to", "before you continue"
+                    ))
+                    # Is it definitely an Idox portal, just gated?
+                    is_idox = any(kw in text_lower for kw in (
+                        "planning application", "search.do", "idox",
+                        "application reference", "applicationdetails",
+                        "online-applications", "keyval"
+                    ))
+                    if has_search_form or (is_disclaimer and is_idox):
+                        return name, base_url, "ok", r.status_code
+                    # Has some form but no search inputs — might be a generic redirect
+                    if soup.find("form") and is_idox:
                         return name, base_url, "ok", r.status_code
                     return name, base_url, "no_form", r.status_code
                 if r.status_code == 406 and extra_headers is None:
@@ -445,9 +484,9 @@ def preflight_check(councils):
 SHEET_HEADERS = [
     "Council", "Reference", "Address", "Description", "App Type",
     "Applicant", "Agent", "Date Received", "Date Decided", "Decision",
-    "Trigger Words", "Score", "Keyword", "Portal Link", "Decision Doc URL",
+    "Trigger Words", "Score", "Keyword", "Portal Link",
     "Date Found", "Mark's Comments",
-    # ── Sales Intelligence (added v16) ──
+    # ── Sales Intelligence ──
     "Est. Project Value", "Developer", "Architect",
     "Impact Probability", "CH Number", "Registered Address", "Contact Link",
 ]
@@ -547,7 +586,7 @@ def write_lead(lead):
         lead["app_type"], lead["applicant"], lead["agent"],
         lead["date_rec"], lead["date_dec"], lead.get("decision", "REFUSED"),
         lead["triggers"], lead["score"], lead["keyword"],
-        lead["url"], lead["doc_url"],
+        lead["url"],
         datetime.now().strftime("%Y-%m-%d %H:%M"), "",
         # Sales intelligence columns
         lead.get("est_value",""),
@@ -570,7 +609,7 @@ def write_lead(lead):
             dec        = lead.get("decision", "").upper()
             is_refused = dec == "REFUSED" or dec.startswith("REFUSED")
             r, g, b    = (0.85, 0.93, 0.85) if is_refused else (0.96, 0.80, 0.80)
-            rng        = f"A{row_num}:X{row_num}"
+            rng        = f"A{row_num}:W{row_num}"
             fmt_body   = {
                 "requests": [{
                     "repeatCell": {
@@ -1874,7 +1913,6 @@ def process_app(sess, base_url, council, item):
         "score":     sc,
         "keyword":   item["keyword"],
         "url":       f"{base_url}/applicationDetails.do?activeTab=summary&keyVal={kv}",
-        "doc_url":   doc_url,
     }
     # Sales intelligence enrichment
     enrich_lead(lead)
@@ -1932,7 +1970,7 @@ def run():
     date_from = (today - timedelta(weeks=WEEKS_TO_SCRAPE)).strftime("%d/%m/%Y")
 
     print("=" * 60)
-    print(f"🏗️  MAPlanning Retail Lead Engine v19")
+    print(f"🏗️  MAPlanning Retail Lead Engine v21")
     print(f"📅  {today.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"📆  {date_from} → {date_to}  ({WEEKS_TO_SCRAPE} weeks)")
     print(f"🏛️  {len(COUNCILS)} councils configured")
