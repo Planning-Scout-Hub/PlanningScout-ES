@@ -241,6 +241,43 @@ COUNCILS = {
     "Hammersmith":       "https://public-access.lbhf.gov.uk/online-applications",
     "City of London":    "https://www.planning2.cityoflondon.gov.uk/online-applications",
     "Islington":         "https://publicaccess.islington.gov.uk/online-applications",
+    # ══ North West (additions) ══════════════════════════════════════
+    "Wyre":              "https://planning.wyre.gov.uk/online-applications",
+    "Fylde":             "https://www.fylde.gov.uk/online-applications",
+    "Rossendale":        "https://planning.rossendale.gov.uk/online-applications",
+    "Hyndburn":          "https://planning.hyndburn.gov.uk/online-applications",
+    "Ribble Valley":     "https://www.ribblevalley.gov.uk/online-applications",
+
+    # ══ East Midlands (additions) ════════════════════════════════════
+    "Erewash":           "https://www.erewash.gov.uk/online-applications",
+    "Amber Valley":      "https://www.ambervalley.gov.uk/online-applications",
+    "South Derbyshire":  "https://www.south-derbys.gov.uk/online-applications",
+    "Blaby":             "https://www.blaby.gov.uk/online-applications",
+    "Hinckley Bosworth": "https://www.hinckley-bosworth.gov.uk/online-applications",
+    "Harborough":        "https://www.harborough.gov.uk/online-applications",
+
+    # ══ West Midlands (additions) ════════════════════════════════════
+    "Lichfield":         "https://www.lichfielddc.gov.uk/online-applications",
+    "Cannock Chase":     "https://www.cannockchasedc.gov.uk/online-applications",
+    "East Staffordshire":"https://www.eaststaffsbc.gov.uk/online-applications",
+
+    # ══ South East (additions) ═══════════════════════════════════════
+    "Waverley":          "https://planning.waverley.gov.uk/online-applications",
+    "Mole Valley":       "https://www.molevalley.gov.uk/online-applications",
+    "Surrey Heath":      "https://www.surreyheath.gov.uk/online-applications",
+    "Epsom Ewell":       "https://www.epsom-ewell.gov.uk/online-applications",
+    "Spelthorne":        "https://www.spelthorne.gov.uk/online-applications",
+
+    # ══ South West (additions) ═══════════════════════════════════════
+    "North Devon":       "https://www.northdevon.gov.uk/online-applications",
+    "East Devon":        "https://planning.eastdevon.gov.uk/online-applications",
+    "Mid Devon":         "https://planning.middevon.gov.uk/online-applications",
+    "Teignbridge":       "https://www.teignbridge.gov.uk/online-applications",
+
+    # ══ East of England (additions) ══════════════════════════════════
+    "Broadland":         "https://www.broadland.gov.uk/online-applications",
+    "Kings Lynn":        "https://www.west-norfolk.gov.uk/online-applications",
+    "Fenland":           "https://www.fenland.gov.uk/online-applications",
 }
 
 # ── Search keywords — what goes into the portal's description field ──────────
@@ -446,6 +483,12 @@ HEADERS_HTTP = {
     "Upgrade-Insecure-Requests": "1",
 }
 
+# ── Per-council rate limit tracker ───────────────────────────────────────────
+# When a council returns HTTP 429, record when the ban expires.
+# search_one_keyword checks this before each keyword — if the council is still
+# rate-limited, it skips immediately instead of wasting time on doomed requests.
+_rate_limited_until = {}   # base_url -> datetime when ban expires
+
 # ════════════════════════════════════════════════════════════
 # LOGGING
 # ════════════════════════════════════════════════════════════
@@ -473,7 +516,12 @@ def _is_dns_error(e):
 def safe_get(sess, url, timeout=25, retries=2):
     for attempt in range(retries):
         try:
-            r = sess.get(url, timeout=timeout, allow_redirects=True)
+           r = sess.get(url, timeout=timeout, allow_redirects=True)
+            if r.status_code == 429:
+                wait = int(r.headers.get("Retry-After", 90))
+                log(f"  🚫 429 on GET — marking {url[:50]} blocked for {wait}s", 2)
+                _rate_limited_until[url.split("/online-applications")[0] + "/online-applications"] = \
+                    datetime.now() + timedelta(seconds=wait)
             return r
         except requests.exceptions.ConnectionError as e:
             if _is_dns_error(e):
@@ -1456,6 +1504,11 @@ def _do_post(sess, base_url, keyword, date_from, date_to, with_refused=True):
             timeout=30, allow_redirects=True,
         )
         log(f"  POST → HTTP {pr.status_code}", 1)
+        if pr.status_code == 429:
+            wait = int(pr.headers.get("Retry-After", 90))
+            log(f"  🚫 429 Rate Limited — marking council blocked for {wait}s", 1)
+            _rate_limited_until[base_url] = datetime.now() + timedelta(seconds=wait)
+            return [], None
     except Exception as e:
         log(f"  ❌ POST failed: {e}", 1)
         return [], None
@@ -1558,6 +1611,13 @@ def _do_post(sess, base_url, keyword, date_from, date_to, with_refused=True):
 
 
 def search_one_keyword(sess, base_url, keyword, date_from, date_to):
+    # Skip immediately if this council is still rate-limited
+    if base_url in _rate_limited_until:
+        if datetime.now() < _rate_limited_until[base_url]:
+            log(f"  ⏭️  Rate limited — skipping '{keyword}'", 1)
+            return []
+        else:
+            del _rate_limited_until[base_url]  # ban expired, clear it
     log(f"  🔎 '{keyword}'  {date_from} → {date_to}", 1)
 
     # ── Attempt 1: keyword + refused decision filter + date range ────────────
@@ -2226,6 +2286,15 @@ def process_app(sess, base_url, council, item):
         "screening opinion",        # EIA screening — pre-application, not a decision
         "scoping opinion",          # EIA scoping — pre-application
         "environmental impact assessment screening",
+        "prior notification",          # forestry/agri permitted dev — not a lead
+        "class ma",                    # office-to-resi prior approval — not a lead
+        "part 6",                      # agricultural/forestry PD — not a lead
+        "part 7",                      # demolition permitted development — not a lead
+        "notification under",          # catches "notification under Class MA/Part 6" etc
+        "prior notification under",    # belt-and-braces for PNA applications
+        "telecommunications",          # phone masts — not a retail lead
+        "street works",                # highway works — not a lead
+        "temporary structure",         # events/markets — not a lead
     )
     if any(bad in desc_lower for bad in _not_leads):
         log(f"  ⏭️  Not a project approval (post-approval admin / non-planning) — skip", 2)
