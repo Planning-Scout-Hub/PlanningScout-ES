@@ -516,7 +516,8 @@ def _is_dns_error(e):
 def safe_get(sess, url, timeout=25, retries=2):
     for attempt in range(retries):
         try:
-           r = sess.get(url, timeout=timeout, allow_redirects=True)
+            # These two lines MUST have the same number of spaces (12 spaces)
+            r = sess.get(url, timeout=timeout, allow_redirects=True)
             if r.status_code == 429:
                 wait = int(r.headers.get("Retry-After", 90))
                 log(f"  🚫 429 on GET — marking {url[:50]} blocked for {wait}s", 2)
