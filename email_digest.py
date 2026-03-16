@@ -38,7 +38,7 @@ SHEET_NAME = "Leads"
 # Normal weekly digest → set to 8
 # Send full history (e.g. first send to Mark) → set to 999
 #
-DAYS_BACK  = 60    # ← CHANGE THIS to 999 to send everything in the sheet
+DAYS_BACK  = 90    # ← CHANGE THIS to 999 to send everything in the sheet
 
 # ── EMAIL RECIPIENT ──────────────────────────────────────────
 # This is the FALLBACK if GMAIL_TO secret is not set in GitHub.
